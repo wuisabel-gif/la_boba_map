@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en" data-author="wuisabel-gif">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LA Boba Map — Pearl Index</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --oat:#F1E5D2;        /* oat-milk background */
+    --oat-2:#E8D8BF;      /* deeper oat */
+    --cream:#FBF5EA;      /* card cream */
+    --espresso:#2C1E14;   /* text */
+    --espresso-soft:#6B5544;
+    --taro:#7B5EA7;       /* signature accent */
+    --taro-deep:#5C4486;
+    --brown-sugar:#9C5A2C;
+    --matcha:#8AAE4B;
+    --peach:#E8924A;
+    --strawberry:#D96A77;
+    --line:rgba(44,30,20,.12);
+    --shadow:0 1px 0 rgba(44,30,20,.04), 0 8px 24px -12px rgba(44,30,20,.30);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'DM Sans',system-ui,-apple-system,sans-serif;
+    background:var(--oat);
+    color:var(--espresso);
+    background-image:radial-gradient(circle at 12% 18%, rgba(123,94,167,.07), transparent 38%),
+                     radial-gradient(circle at 88% 8%, rgba(232,146,74,.08), transparent 34%);
+    min-height:100vh;
+  }
+  .wrap{max-width:1340px;margin:0 auto;padding:0 20px 60px}
+
+  /* ---------- header ---------- */
+  header.top{padding:30px 0 14px}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;font-size:11px;color:var(--taro-deep);background:rgba(123,94,167,.10);
+    padding:6px 12px;border-radius:999px}
+  h1{font-family:'Baloo 2',cursive;font-weight:800;font-size:clamp(34px,6vw,58px);line-height:.98;
+    margin:14px 0 8px;letter-spacing:-.01em}
+  h1 .pop{color:var(--taro)}
+  .sub{max-width:620px;color:var(--espresso-soft);font-size:16px;line-height:1.5;margin:0}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .stat{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:10px 16px;box-shadow:var(--shadow)}
+  .stat b{font-family:'Baloo 2',cursive;font-size:22px;display:block;line-height:1}
+  .stat span{font-size:12px;color:var(--espresso-soft);font-weight:500}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:22px 0 16px}
+  .search{flex:1;min-width:220px;position:relative}
+  .search input{width:100%;padding:13px 14px 13px 42px;border-radius:14px;border:1px solid var(--line);
+    background:var(--cream);font:inherit;font-size:15px;color:var(--espresso);box-shadow:var(--shadow)}
+  .search input:focus{outline:2px solid var(--taro);outline-offset:1px}
+  .search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:.45}
+  .toggle,.mini{display:inline-flex;align-items:center;gap:8px;background:var(--cream);border:1px solid var(--line);
+    border-radius:14px;padding:11px 15px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;
+    color:var(--espresso);box-shadow:var(--shadow);user-select:none}
+  .toggle.on{background:var(--taro);color:#fff;border-color:var(--taro)}
+  .mini select{font:inherit;font-weight:600;border:none;background:transparent;color:inherit;cursor:pointer;outline:none}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .chip{background:var(--cream);border:1px solid var(--line);border-radius:999px;padding:8px 15px;
+    font-weight:600;font-size:13.5px;cursor:pointer;color:var(--espresso-soft);transition:.15s}
+  .chip:hover{border-color:var(--taro)}
+  .chip.on{background:var(--espresso);color:var(--oat);border-color:var(--espresso)}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  #map{height:640px;border-radius:20px;border:1px solid var(--line);box-shadow:var(--shadow);
+    position:sticky;top:16px;background:var(--oat-2)}
+  @media(max-width:880px){#map{height:340px;position:static}}
+  .list{display:flex;flex-direction:column;gap:14px;max-height:none}
+  .count-row{font-size:13px;color:var(--espresso-soft);font-weight:600;margin:-4px 2px 2px}
+
+  /* ---------- card ---------- */
+  .card{background:var(--cream);border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    box-shadow:var(--shadow);scroll-margin-top:80px}
+  .card.active{outline:2px solid var(--taro);outline-offset:0}
+  .card-head{display:flex;gap:14px;padding:16px 16px 14px;cursor:pointer;align-items:flex-start}
+  .pearl{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+    font-family:'Baloo 2',cursive;font-weight:800;font-size:17px;color:#fff;position:relative}
+  .pearl small{position:absolute;bottom:-6px;font-size:9px;background:var(--espresso);color:var(--oat);
+    padding:1px 5px;border-radius:6px;font-family:'DM Sans'}
+  .ch-main{flex:1;min-width:0}
+  .ch-main h3{font-family:'Baloo 2',cursive;font-weight:700;font-size:18px;margin:0 0 3px;line-height:1.1}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:13px;color:var(--espresso-soft);align-items:center}
+  .meta .hood{font-weight:700;color:var(--taro-deep)}
+  .price{color:var(--matcha);font-weight:700;letter-spacing:1px}
+  .status{font-weight:700;font-size:12px;padding:2px 9px;border-radius:999px}
+  .open{background:rgba(138,174,75,.18);color:#5d7a26}
+  .closed{background:rgba(217,106,119,.16);color:#a8434f}
+  .chev{flex:none;align-self:center;transition:transform .25s;opacity:.5}
+  .card.expanded .chev{transform:rotate(180deg)}
+
+  .body{display:none;padding:0 16px 16px;border-top:1px dashed var(--line);margin-top:2px}
+  .card.expanded .body{display:block;animation:slidein .26s ease}
+  @keyframes slidein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+  .sec{padding:13px 0;border-bottom:1px dashed var(--line)}
+  .sec:last-child{border-bottom:none}
+  .sec-label{display:flex;align-items:center;gap:8px;font-family:'Baloo 2',cursive;font-weight:700;
+    font-size:13px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:7px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .sec p{margin:0;font-size:14px;line-height:1.5;color:var(--espresso)}
+  .sec .from{font-size:11px;color:var(--espresso-soft);font-style:italic;margin-top:5px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .tag{background:var(--oat);border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:12.5px;font-weight:600}
+  .park-sec{background:rgba(232,146,74,.09);border-radius:12px;padding:11px 12px;border:1px solid rgba(232,146,74,.25)}
+
+  .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .lnk{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:700;font-size:13px;
+    padding:9px 13px;border-radius:11px;border:1px solid var(--line);color:var(--espresso);background:var(--oat);transition:.15s}
+  .lnk:hover{transform:translateY(-1px);border-color:var(--taro)}
+  .lnk b{font-weight:800}
+  .platform-note{font-size:11.5px;color:var(--espresso-soft);margin-top:9px;line-height:1.45}
+
+  /* ---------- footer ---------- */
+  footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:center}
+  .made{font-family:'Baloo 2',cursive;font-weight:700;font-size:16px;display:flex;align-items:center;gap:9px}
+  .gh{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:#fff;background:var(--espresso);
+    padding:10px 16px;border-radius:12px;font-weight:700;font-size:14px}
+  .gh:hover{background:var(--taro-deep)}
+  .disclaimer{font-size:11.5px;color:var(--espresso-soft);max-width:560px;line-height:1.5}
+
+  /* boba pearls bouncing in title */
+  .bubbles{display:inline-flex;gap:5px;vertical-align:middle;margin-left:6px}
+  .bubbles i{width:13px;height:13px;border-radius:50%;display:inline-block;background:var(--brown-sugar);
+    animation:bob 1.4s ease-in-out infinite}
+  .bubbles i:nth-child(2){animation-delay:.18s;background:var(--taro)}
+  .bubbles i:nth-child(3){animation-delay:.36s;background:var(--matcha)}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+  .leaflet-popup-content-wrapper{border-radius:14px}
+  .leaflet-popup-content{margin:12px 14px;font-family:'DM Sans',sans-serif}
+  .pop-title{font-family:'Baloo 2',cursive;font-weight:700;font-size:15px;margin-bottom:2px}
+  .pop-meta{font-size:12px;color:#6B5544}
+  .pop-btn{display:inline-block;margin-top:8px;font-weight:700;font-size:12px;color:var(--taro-deep);cursor:pointer}
+
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">🧋 The Pearl Index · Los Angeles</span>
+    <h1>LA Boba Map<span class="bubbles" aria-hidden="true"><i></i><i></i><i></i></span></h1>
+    <p class="sub">Eighty-plus real boba shops from the San Gabriel Valley and South Bay to the SF Valley (Glendale, Northridge) and Orange County (Irvine) — with every major chain (Gong Cha, 7 Leaves, Sharetea, Chatime, heytea, Ume Tea, Tastea, Boba Guys, TP Tea) and the Westfield Century City lineup. Mapped, rated, and checked for the stuff that actually decides your trip: seating, vibe, safety notes, and <b>parking</b>.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="controls">
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+      <input id="q" type="text" placeholder="Search a shop or a drink (jasmine, taro, ube…)">
+    </div>
+    <button class="toggle" id="openNow">🟢 Open now</button>
+    <label class="mini">⭐ Min<select id="minRating"><option value="0">Any</option><option value="4">4.0+</option><option value="4.5">4.5+</option><option value="4.7">4.7+</option></select></label>
+    <label class="mini">Sort<select id="sort"><option value="rating">Top rated</option><option value="reviews">Most reviewed</option><option value="name">A–Z</option></select></label>
+  </div>
+  <div class="chips" id="hoods"></div>
+
+  <div class="grid">
+    <div id="map"></div>
+    <div>
+      <div class="count-row" id="countRow"></div>
+      <div class="list" id="list"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div>
+      <div class="made">Made with 🧋 by <span style="color:var(--taro)">wuisabel</span></div>
+      <div class="disclaimer">Shop names, ratings, hours, price level &amp; coordinates are live Google Places data. Seating / vibe / <b>parking</b> notes are summarized from real Google reviews and labelled as such. Menus &amp; delivery prices change daily, so the Yelp / UberEats / Fantuan / Google buttons open each shop's <i>live</i> page rather than a frozen snapshot — that way the menu you see is the real one.</div>
+    </div>
+    <a class="gh" id="ghLink" href="https://github.com/wuisabel-gif" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 .8 2.7.6 3.4.4.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.5.2 2.7.1 3 .8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+      GitHub
+    </a>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------- DATA: real Google Places fields + review-derived notes ---------- */
+const SHOPS = [
+ {n:"Molly Tea (Arcadia)",h:"SGV / Arcadia",lat:34.1267663,lng:-118.0544228,r:4.8,rc:318,p:2,ph:"+1 213-913-8384",a:"1130 S Baldwin Ave A5, Arcadia",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Premium Jasmine Milk Tea","White Champaca Milk Tea","Camellia Oolong","Lapsang Bubble Tea"],
+  seat:"Modern, clean, well-lit — but it's the current 'it' spot, so it runs hectic with more people standing and waiting than sitting.",
+  park:"Shared lot that fills up fast under the hype — reviewers say come ready to circle for a spot.",vibe:["High-quality leaf tea","Gen-Z crowd","Expect a wait"]},
+ {n:"Molly Tea (San Gabriel)",h:"SGV / San Gabriel",lat:34.0797025,lng:-118.1064977,r:4.7,rc:2355,p:2,ph:"+1 626-464-7666",a:"425 W Valley Blvd #101, San Gabriel",
+  hrs:["11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM"],
+  drinks:["Premium Jasmine Milk Tea (oat)","Pistachio White Champaca","Matcha Jasmine","Snowy Gardenia"],
+  seat:"Plenty of space to sit, but it gets very busy at night.",
+  park:"Parking in front, back, and on the street — but the front lot is small and tight and fills quickly at night; large vehicles struggle.",vibe:["Open till 1 AM","Order ahead","Huge following"]},
+ {n:"BenGong's Tea (Arcadia)",h:"SGV / Arcadia",lat:34.1410056,lng:-118.0217692,r:4.3,rc:158,p:1,ph:"+1 949-518-4120",a:"411 E Huntington Dr Ste 113, Arcadia",
+  hrs:["12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 8:00 PM"],
+  drinks:["Uji / Yame Matcha Boba","Mochi Mango","Passion Fruit Cheese Foam","Jasmine Green w/ tapioca"],
+  seat:"Nice seating with free WiFi, anime-style art and a 'make-a-wish' tree — a genuine hangout.",
+  park:"Strip-plaza parking; generally manageable outside peak.",vibe:["Real Japanese matcha","Cute décor","WiFi"]},
+ {n:"Boba Ave Express",h:"SGV / Arcadia",lat:34.1227869,lng:-118.0555232,r:4.1,rc:614,p:1,ph:"+1 626-861-1110",a:"1437 S Baldwin Ave, Arcadia",
+  hrs:["11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:30 AM","11:00 AM – 12:30 AM","11:00 AM – 12:00 AM"],
+  drinks:["Taro Milk Tea","Half & Half","Strawberry Yogurt","Popcorn chicken (snack)"],
+  seat:"Casual, fun vibe; expect a line — ordering ahead saves the wait.",
+  park:"Strip-mall lot; busy late.",vibe:["Open till midnight","Big portions","Good late-night option"]},
+ {n:"CHICHA San Chen (Arcadia)",h:"SGV / Arcadia",lat:34.126738,lng:-118.0528276,r:3.8,rc:26,p:3,ph:"+1 626-317-5021",a:"629 W Duarte Rd, Arcadia",
+  hrs:["12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM"],
+  drinks:["Bubble Milk Tea","Green Tea Passionfruit","Honey Osmanthus Oolong","Creamy Mango Tart"],
+  seat:"Beautifully curated, culturally elegant space — treated like a specialty coffee bar.",
+  park:"Plaza parking; can be busy at opening.",vibe:["Freshly brewed leaf tea","Premium / pricier","Long waits when busy"]},
+ {n:"Yi Fang Taiwan Fruit Tea (Arcadia)",h:"SGV / Arcadia",lat:34.1249754,lng:-118.0565597,r:4.1,rc:45,p:1,ph:"+1 626-765-3088",a:"733 W Naomi Ave I, Arcadia",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM"],
+  drinks:["Brown Sugar Pearl Milk","Winter Melon Milk Tea","Mango Pomelo Sago","Matcha Latte + pancakes"],
+  seat:"Neat and clean, but more of a self-serve grab-and-go than a hangout.",
+  park:"Reviewers note plenty of parking — low stress.",vibe:["Touchscreen kiosk","Reusable-cup friendly","Easy parking"]},
+ {n:"Sunright Tea Studio (San Gabriel)",h:"SGV / San Gabriel",lat:34.0845836,lng:-118.091002,r:4.4,rc:114,p:1,ph:"+1 626-656-6257",a:"1245 S San Gabriel Blvd, San Gabriel",
+  hrs:["12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM"],
+  drinks:["Crème Brûlée Milk Tea","Jasmine Tea","Tiger Sugar-style series"],
+  seat:"Smallest of the Sunright outlets — barely fits ~3 inside; mostly mobile-order & pickup.",
+  park:"Tight rear lot (~6 cars); street parking off Wells St is the smarter bet.",vibe:["Tiny but loved","Kiosk order","Quick when quiet"]},
+ {n:"Nest Tea House",h:"SGV / Arcadia",lat:34.1069202,lng:-118.0508292,r:4.4,rc:252,p:1,ph:"+1 626-538-4711",a:"556 Las Tunas Dr #108, Arcadia",
+  hrs:["11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM"],
+  drinks:["Hokkaido Milkstache series","Rose Green Milk Tea","Sea-salt topping"],
+  seat:"Cozy with lots of seating + free WiFi — a known homework/study spot; tables fill on weekends.",
+  park:"Tucked away, so parking is usually easy even on a Saturday evening.",vibe:["Study-friendly","Quiet hideaway","Easy parking"]},
+
+ {n:"CHICHA San Chen (Sawtelle)",h:"West LA / Sawtelle",lat:34.0382498,lng:-118.4418453,r:4.9,rc:355,p:3,ph:"+1 323-330-4534",a:"11301 W Olympic Blvd #119, LA",
+  hrs:["12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 10:00 PM"],
+  drinks:["Bubble Milk Tea (warm boba)","Honey Osmanthus Oolong","Passion Fruit Green","Creamy Mango Tart"],
+  seat:"Aesthetic, clean and minimal with ample seating — watch the tea brewed in front of you.",
+  park:"Sawtelle plaza / street parking — plan for the neighborhood's usual crunch.",vibe:["Top-rated in area","Warm chewy boba","Premium price"]},
+ {n:"Teaspoon Sawtelle",h:"West LA / Sawtelle",lat:34.0409371,lng:-118.4443698,r:4.6,rc:495,p:1,ph:"+1 424-465-9021",a:"1947 Sawtelle Blvd Ste E, LA",
+  hrs:["11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM"],
+  drinks:["Ube Vietnamese Coffee","Liquid Gold (oolong + cream)","Lychee Black Tea","Strawberry Sangria"],
+  seat:"Clean and cozy with free WiFi and card games — built for sitting and working a while.",
+  park:"Sawtelle street parking; app order helps you time pickup.",vibe:["Work-friendly","App rewards","Open late"]},
+ {n:"Odd One Out Tea (Sawtelle)",h:"West LA / Sawtelle",lat:34.0380231,lng:-118.441968,r:4.5,rc:242,p:1,ph:"+1 213-816-3667",a:"11301 W Olympic Blvd UNIT 124, LA",
+  hrs:["12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM"],
+  drinks:["Jasmine Silk Boba","Golden Buddha Silk Boba","Champion Milk Tea","Osmanthus Oolong"],
+  seat:"Small inside — limited room when a crowd hits; great for a quick grab.",
+  park:"Street parking only.",vibe:["Award-winning milk tea","Highly customizable","Free samples"]},
+ {n:"7 Miles Tea Lab",h:"West LA / Sawtelle",lat:34.0407538,lng:-118.443212,r:4.2,rc:97,p:1,ph:"+1 424-208-3373",a:"2010 Sawtelle Blvd, LA",
+  hrs:["12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 11:00 PM","12:00 PM – 12:00 AM","12:00 PM – 12:00 AM","12:00 – 10:00 PM"],
+  drinks:["Mystic Ube Matcha","Black Sesame Under the Clouds","Pineapple Sunshine","Matcha Earl Grey Oat"],
+  seat:"No indoor seating and very limited (sometimes dirty) outdoor tables — best for to-go.",
+  park:"Sawtelle street parking.",vibe:["Creative ube drinks","Kiosk order","Open late wknds"]},
+ {n:"Volcano Tea House",h:"West LA / Sawtelle",lat:34.0390805,lng:-118.4425966,r:4.4,rc:616,p:1,ph:"+1 310-445-5326",a:"2111 Sawtelle Blvd, LA",
+  hrs:["10:30 AM – 12:00 AM","10:30 AM – 12:00 AM","10:30 AM – 12:00 AM","10:30 AM – 12:00 AM","10:30 AM – 12:00 AM","10:30 AM – 12:00 AM","10:30 AM – 12:00 AM"],
+  drinks:["Misugaru + oat + crystal boba","Peach Oolong (hot)","Classic Boba Milk Tea"],
+  seat:"Really no seating — mainly to-go.",
+  park:"Has a private plaza lot with a guard checking you're a customer; neighborhood street parking is near-impossible.",vibe:["Open till midnight daily","Fast even at 11 PM","Strip-mall spot"]},
+ {n:"Black Sugar Boba",h:"West LA / Westwood",lat:34.0460786,lng:-118.4646915,r:4.6,rc:67,p:2,ph:"+1 818-370-0665",a:"11918 Wilshire Blvd, LA",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","12:00 PM – 12:00 AM","12:00 PM – 12:00 AM","11:00 AM – 10:00 PM"],
+  drinks:["Honey Milk Tea w/ brown sugar boba","Espresso-shot Milk Tea","Jasmine Passion Fruit","Mochi waffle"],
+  seat:"Clean, sleek indoor seating area; dog-friendly, attentive staff.",
+  park:"Wilshire-corridor parking; street + nearby lots.",vibe:["Alt-milk options","Fresh ingredients","Friendly service"]},
+
+ {n:"Mai Tea Boba",h:"Downtown LA",lat:34.0448979,lng:-118.2586531,r:4.8,rc:18,p:2,ph:"+1 213-221-7147",a:"834 S Grand Ave, LA",
+  hrs:["11:00 AM – 4:00 PM","11:00 AM – 4:00 PM","11:00 AM – 4:00 PM","11:00 AM – 4:00 PM","Closed","Closed","Closed"],
+  drinks:["Thick Matcha (premium)","Crème Brûlée Milk Tea","Matcha x Vietnamese Coffee","Hojicha cream top"],
+  seat:"A hidden DTLA gem — welcoming, with seating to actually sit and enjoy.",
+  park:"Downtown street / paid lots.",vibe:["Real premium matcha","Possibly hand-made boba","Weekdays only, closes 4 PM"]},
+ {n:"YAMISHA DTLA",h:"Downtown LA",lat:34.0397229,lng:-118.2534816,r:4.9,rc:43,p:2,ph:"+1 213-221-7346",a:"908 Santee St, LA (Fashion District)",
+  hrs:["10:00 AM – 5:00 PM","10:00 AM – 5:00 PM","10:00 AM – 5:00 PM","10:00 AM – 5:00 PM","10:00 AM – 5:00 PM","10:00 AM – 5:00 PM","10:00 AM – 5:00 PM"],
+  drinks:["Horchata Milk Tea","Strawberry Tea","Oreo/Chocolate Mochi Taiyaki"],
+  seat:"Cute, clean and welcoming with its own bathroom — handy in the Fashion District.",
+  park:"Fashion-District street parking / paid lots; busy daytime.",vibe:["Unusual flavors","Affordable","Friendly staff"]},
+ {n:"Bubble U",h:"Downtown LA / Chinatown edge",lat:34.0411742,lng:-118.2523425,r:4.5,rc:491,p:1,ph:"+1 213-905-8398",a:"819 Santee St #111, LA",
+  hrs:["10:00 AM – 6:00 PM","10:00 AM – 6:00 PM","10:00 AM – 6:00 PM","10:00 AM – 6:00 PM","10:00 AM – 6:00 PM","10:00 AM – 6:00 PM","10:00 AM – 6:00 PM"],
+  drinks:["Thai Tea","Sea Salt Coffee","Hand-decorated boba art"],
+  seat:"Calm, beautiful vibe with self-service tablets; quiet on human interaction.",
+  park:"Paid parking lots + very limited street parking — challenging in this busy area.",vibe:["Latte-art on boba","Self-order","Detailed menu"]},
+ {n:"It's Boba Time (DTLA)",h:"Downtown LA",lat:34.0466362,lng:-118.2558869,r:4.0,rc:100,p:1,ph:"+1 213-278-0051",a:"508 W 7th St, LA",
+  hrs:["11:00 AM – 10:30 PM","11:00 AM – 10:30 PM","11:00 AM – 10:30 PM","11:00 AM – 10:30 PM","11:00 AM – 10:30 PM","11:00 AM – 10:30 PM","11:00 AM – 10:30 PM"],
+  drinks:["Tiger Milk Tea","Strawberry Matcha","Dubai Chocolate Shake"],
+  seat:"Bright, colorful and clean with a modern LA energy; good atmosphere.",
+  park:"7th St / downtown metered + lots.",vibe:["Big menu","Fast service","Snacks too"]},
+ {n:"SHARP TEA",h:"Downtown LA / Little Tokyo",lat:34.0498454,lng:-118.2421964,r:4.2,rc:84,p:1,ph:"+1 213-294-3412",a:"123 Astronaut E S Onizuka St #101d, LA",
+  hrs:["11:30 AM – 7:30 PM","11:30 AM – 7:30 PM","11:30 AM – 7:30 PM","11:30 AM – 7:30 PM","11:30 AM – 7:30 PM","11:30 AM – 7:30 PM","11:30 AM – 7:30 PM"],
+  drinks:["Jasmine Tea (half sugar)","Air / fluffy pancakes","Espresso boba"],
+  seat:"Small store with no chairs — enjoy nearby; rainy days are tricky.",
+  park:"Little Tokyo structures (e.g., Onizuka lot) nearby.",vibe:["Order pancakes ahead (~30 min)","Onigiri next door","Reasonable price"]},
+ {n:"Loose Leaf Boba Company",h:"Downtown LA",lat:34.0488926,lng:-118.2536856,r:4.4,rc:126,p:1,ph:"+1 323-772-6858",a:"521 S Olive St, LA (Pershing Sq)",
+  hrs:["8:00 AM – 6:00 PM","8:00 AM – 6:00 PM","8:00 AM – 8:00 PM","8:00 AM – 8:00 PM","8:00 AM – 10:00 PM","8:00 AM – 10:00 PM","8:00 AM – 8:00 PM"],
+  drinks:["Iced Coconut Coffee + boba","Vietnamese Coffee","Green Milk Tea"],
+  seat:"Chill, good-vibes spot with great amenities — including a curtained phone-call booth; often calm/empty.",
+  park:"Across from Pershing Square — public lots & metro nearby.",vibe:["Coffee-forward","iPad order","Resealable lids"]},
+
+ {n:"CHICHA San Chen (Koreatown)",h:"Koreatown",lat:34.0625085,lng:-118.3016014,r:4.9,rc:408,p:3,ph:"",a:"625 S Ardmore Ave, LA",
+  hrs:["11:30 AM – 9:30 PM","11:30 AM – 9:30 PM","11:30 AM – 9:30 PM","11:30 AM – 9:30 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 9:30 PM"],
+  drinks:["Bubble Milk Tea","Mango drink","Taro Bubble","Honey Osmanthus Oolong"],
+  seat:"Fresh, relaxing, cute interior with some seating; line moves fast.",
+  park:"40 min FREE validated parking next to the store, plus street parking — one of the easiest in K-Town.",vibe:["Michelin-quality tea","Validated parking","Great service"]},
+ {n:"Odd One Out Tea (Koreatown)",h:"Koreatown",lat:34.062786,lng:-118.30948,r:4.6,rc:101,p:1,ph:"+1 213-861-9867",a:"621 S Western Ave Ste 102, LA",
+  hrs:["11:45 AM – 10:00 PM","11:45 AM – 10:00 PM","11:45 AM – 10:00 PM","11:45 AM – 10:00 PM","11:45 AM – 11:00 PM","11:45 AM – 11:00 PM","11:45 AM – 10:00 PM"],
+  drinks:["Red Oolong Milk Tea + mochi","Champion Milk Tea","Yuzu Osmanthus","Jasmine Silk Boba"],
+  seat:"Friendly, sample-forward service; relaxed spot to try a few teas.",
+  park:"In the Western Ave plaza — shared lot + street.",vibe:["Storytelling samples","Seasonal teas","Best at 50% sweet"]},
+ {n:"HHD (Heuk Hwa Dang)",h:"Koreatown",lat:34.0629424,lng:-118.3093026,r:4.2,rc:189,p:1,ph:"+1 213-448-1888",a:"621 S Western Ave G01, LA (MaDang Courtyard)",
+  hrs:["12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 10:00 PM"],
+  drinks:["Taro Milk + boba","Dalgona Ice Cream","Brown Sugar Ice Cream","Croffle / waffles"],
+  seat:"Wide, spacious 'airport-gate' feel with comfy couches, claw machines & a photobooth — big hangout.",
+  park:"Parking garage right next door validates for the MaDang Courtyard plaza — easy vs. rough Western Ave street parking.",vibe:["Huge dessert menu","Validated garage","Great for groups"]},
+ {n:"Boba Sound",h:"Koreatown",lat:34.0494598,lng:-118.3088651,r:4.8,rc:207,p:1,ph:"+1 323-641-0112",a:"1144 S Western Ave, LA",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM"],
+  drinks:["Coin Cheese Bread","Taiyaki (red bean/cheese/Nutella)","Cinnamon-ginger drink"],
+  seat:"Detail-loving family-run shop; warm welcome, freshly made everything.",
+  park:"Reviewers specifically call out great parking — a rarity on Western.",vibe:["Korean taiyaki","Family-run","Easy parking"]},
+ {n:"I Love Boba (Oxford)",h:"Koreatown",lat:34.0572963,lng:-118.3072853,r:4.5,rc:222,p:1,ph:"+1 213-263-9302",a:"3512 W 8th St, LA",
+  hrs:["10:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 12:00 AM","10:00 AM – 12:00 AM","10:00 AM – 1:00 AM","9:00 AM – 1:00 AM","9:00 AM – 12:00 AM"],
+  drinks:["Mint Choco Smoothie + coffee jelly","Pistachio Smoothie","Earl Grey Matcha","Banana Bread Latte"],
+  seat:"Family- and kid-friendly with games, a pet bowl, and plenty of space to meet friends or work.",
+  park:"8th St neighborhood street parking.",vibe:["Open very late","Kid & pet friendly","Pastries"]},
+ {n:"It's Boba Time (Vermont)",h:"Koreatown",lat:34.059611,lng:-118.292184,r:4.5,rc:1601,p:1,ph:"+1 213-386-2622",a:"701 S Vermont Ave, LA",
+  hrs:["8:00 AM – 12:00 AM","8:00 AM – 12:00 AM","8:00 AM – 12:00 AM","8:00 AM – 12:00 AM","8:00 AM – 12:00 AM","8:00 AM – 12:00 AM","8:00 AM – 12:00 AM"],
+  drinks:["Matcha Boba","Dragon Fruit Iced Tea","Piña Colada Smoothie","Cheesecake"],
+  seat:"Clean with enough seating; kiosk order, staff confirm your pickup.",
+  park:"Paid valet only on-site, but street parking is available nearby.",vibe:["Open till midnight","1,600+ reviews","Reliable chain"]},
+
+ {n:"CHAGEE Modern Teahouse",h:"West LA / Century City",lat:34.0590365,lng:-118.420568,r:3.4,rc:346,p:3,ph:"+1 213-660-7178",a:"10250 Santa Monica Blvd #2020, LA (Westfield Century City)",
+  hrs:["9:00 AM – 9:00 PM","9:00 AM – 9:00 PM","9:00 AM – 9:00 PM","9:00 AM – 9:00 PM","9:00 AM – 10:00 PM","9:00 AM – 10:00 PM","9:00 AM – 10:00 PM"],
+  drinks:["BOYA Jasmine Tea","Roasted Oolong Latte","Peach Green Tea","Signature designed cups"],
+  seat:"Beautiful, modern interior with plenty of indoor AND outdoor seating — the self-styled 'Starbucks of tea'.",
+  park:"Westfield Century City validated mall parking structure — easy, but the mall itself is busy.",vibe:["MASSIVE hype","Waits up to ~2 hrs at peak","Premium price","Fast-moving line"]},
+ {n:"Wushiland Boba (Century City)",h:"West LA / Century City",lat:34.0593679,lng:-118.4199591,r:4.2,rc:173,p:1,ph:"+1 424-382-1060",a:"10250 Santa Monica Blvd Suite 2770, LA (Westfield Century City)",
+  drinks:["Earl Grey Milk Tea","Grapefruit Fruit Tea","Mini-pearl drinks","Fresh-squeezed fruit teas"],
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 8:00 PM"],
+  seat:"Inside the mall; small footprint that can get packed.",
+  park:"Westfield Century City parking structure.",vibe:["Very generous boba","Less sweet than Gong Cha","Unique mini pearls","~$7 a cup"]},
+ {n:"Cha Cha Matcha (Century City)",h:"West LA / Century City",lat:34.0590031,lng:-118.418866,r:4.1,rc:169,p:2,ph:"",a:"10250 Santa Monica Blvd #1625, LA (Westfield Century City)",
+  hrs:["8:00 AM – 7:00 PM","8:00 AM – 7:00 PM","8:00 AM – 7:00 PM","8:00 AM – 7:00 PM","8:00 AM – 7:00 PM","9:00 AM – 7:00 PM","9:00 AM – 7:00 PM"],
+  drinks:["Strawberry Matcha Latte","Matcha Cloud","Hojicha + black sesame cold foam","Draft cold brew"],
+  seat:"Tiny, cute, happy-making shop — usually a line; mostly grab-and-go.",
+  park:"Westfield Century City structure.",vibe:["Matcha-forward (not classic boba)","Great vegan cold foam","Instagrammable","Premium price"]},
+ {n:"Redstraw Tea Bar",h:"West LA / Century City",lat:34.0582733,lng:-118.4180665,r:4.1,rc:136,p:2,ph:"+1 310-734-7567",a:"10250 Santa Monica Blvd, LA (Westfield Century City, 2nd floor)",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 8:00 PM"],
+  drinks:["Brown Sugar Milk Tea","Grapefruit Punch","Rose Buds Tea","Build-your-own Custom Tea"],
+  seat:"Small bougie white-toned bar on the 2nd floor of the mall; line moves fast.",
+  park:"Westfield Century City structure.",vibe:["Customizable sweetness","Add boba / agar boba","Specialty + custom teas"]},
+ {n:"Tiger Sugar (Little Tokyo)",h:"Downtown LA / Little Tokyo",lat:34.0486951,lng:-118.240574,r:3.5,rc:129,p:1,ph:"+1 213-800-6934",a:"341 E 2nd St, LA",
+  hrs:["12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 9:00 PM"],
+  drinks:["Brown Sugar Boba Milk (signature)","Strawberry Matcha Latte + boba","Mango Tea"],
+  seat:"Cute little spot; order with a real person, not a kiosk.",
+  park:"Little Tokyo — paid lots/structures only.",vibe:["Brown-sugar specialist","Adjustable sweetness","Walk/transit friendly","Mixed reviews"]},
+ {n:"Chatime (Westfield Culver City)",h:"Culver City",lat:33.9853757,lng:-118.3941848,r:4.5,rc:144,p:1,ph:"+1 310-390-1833",a:"6000 Sepulveda Blvd G12, Culver City (Westfield)",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","10:00 AM – 9:00 PM","10:00 AM – 8:00 PM"],
+  drinks:["Panda Supreme Milk Tea (mixed pearls)","Lychee Green Tea","Thai Tea","Pumpkin Spice Milk Tea"],
+  seat:"Mall location with food-court seating nearby; quick.",
+  park:"Westfield Culver City structure.",vibe:["Fresh boba every 4 hrs","Collectible charms","Friendly fast service"]},
+ {n:"Chatime (Sherman Oaks)",h:"Sherman Oaks",lat:34.1562491,lng:-118.4369604,r:3.7,rc:35,p:1,ph:"+1 747-264-1056",a:"14006 Riverside Dr #249C, Sherman Oaks (Westfield Fashion Square)",
+  hrs:["11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","10:00 AM – 9:00 PM","10:00 AM – 9:00 PM","11:00 AM – 7:00 PM"],
+  drinks:["Taro Milk Tea Mousse","Oolong Black Tea + mousse + aloe","Watermelon Slush"],
+  seat:"Inside the Fashion Square food court.",
+  park:"Westfield Fashion Square structure.",vibe:["Sizes 16/22/32 oz","Use the Chatime app","Fresh boba every 4 hrs","On the pricey side"]},
+ {n:"Half & Half Tea House (Monterey Park)",h:"SGV / Monterey Park",lat:34.0636058,lng:-118.134531,r:4.4,rc:962,p:1,ph:"+1 626-872-0200",a:"141 N Atlantic Blvd #112, Monterey Park",
+  hrs:["11:15 AM – 9:30 PM","Closed","11:15 AM – 9:30 PM","11:15 AM – 9:30 PM","11:15 AM – 9:30 PM","11:15 AM – 9:30 PM","11:15 AM – 9:30 PM"],
+  drinks:["Iced Milk Drink w/ Pudding + Honey Boba (signature)","White Grape Green Tea","Grapefruit Green Tea"],
+  seat:"Some seating with the kitchen walled off; a 7-year+ neighborhood favorite.",
+  park:"Limited but workable street + structure parking.",vibe:["Huge menu","Warm chewy boba","Reliable & loved","Closed Tuesdays"]},
+ {n:"R&B Tea (Monterey Park)",h:"SGV / Monterey Park",lat:34.0529819,lng:-118.1362708,r:4.5,rc:144,p:1,ph:"+1 626-872-6700",a:"728 S Atlantic Blvd #107, Monterey Park",
+  hrs:["11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:30 PM","11:00 AM – 11:30 PM","11:00 AM – 11:00 PM"],
+  drinks:["Strong Milk Tea","Refreshing Fruit Teas","Al-dente boba"],
+  seat:"Cute aesthetic with five-or-six tables and couches; board games to borrow, but no bathroom.",
+  park:"Small strip-mall lot that gets crowded.",vibe:["Happy Hour Mon–Thu 2–5 (BOGO 50%)","Open till ~11 PM","Reasonable prices"]},
+ {n:"It's Boba Time (Monterey Park)",h:"SGV / Monterey Park",lat:34.0374976,lng:-118.1459031,r:4.2,rc:298,p:1,ph:"+1 323-853-2622",a:"2252 S Atlantic Blvd, Monterey Park",
+  hrs:["11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM"],
+  drinks:["Strawberry-Pineapple Smoothie + egg pudding","Pistachio Frappe","Popcorn chicken (snack)"],
+  seat:"Standard chain layout; kiosk ordering for card/Apple Pay, counter for cash.",
+  park:"Strip-mall lot.",vibe:["Big chain menu","Smoothies + snacks","Self-order kiosks"]},
+ {n:"繁花 Fanhua Blossom",h:"SGV / Monterey Park",lat:34.062263,lng:-118.1104198,r:4.3,rc:53,p:1,ph:"+1 626-734-4255",a:"848 E Garvey Ave D, Monterey Park",
+  hrs:["11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM"],
+  drinks:["Peach Oolong Milk Tea w/ pink cream","Mango Pomelo Sago","Black Rice Taro Mousse","Persimmon Smoothie"],
+  seat:"One of the prettiest dessert-tea shops around — high-end chess boards and games to play.",
+  park:"Strip-plaza parking.",vibe:["Fresh-squeezed, made-to-order","Natural ingredients","Tea + Chinese desserts"]},
+ {n:"Chayan",h:"SGV / Rowland Heights",lat:33.9888205,lng:-117.9032156,r:4.8,rc:280,p:2,ph:"+1 626-269-0041",a:"18423 Colima Rd, Rowland Heights",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Da Hong Pao Tea Frappe","Peach Oolong","Osmanthus Lychee Lemon Tea","Strong tea-forward milk teas"],
+  seat:"Clean, light-green chill-vibe space with a few spacious tables; quick service even late.",
+  park:"Free parking in the plaza lot.",vibe:["Strong tea aroma","Two self-order kiosks","Pup cups for dogs"]},
+ {n:"Auntea Jenny (Rowland)",h:"SGV / Rowland Heights",lat:33.9957941,lng:-117.9070156,r:4.8,rc:683,p:2,ph:"+1 626-886-1007",a:"18205 Gale Ave B, City of Industry",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:30 PM","11:00 AM – 10:30 PM","11:00 AM – 10:00 PM"],
+  drinks:["Da Hong Pao Boba Milk + cheese foam","Mango Sago Pomelo","Strawberry Green Milk Tea Daifuku","Crème Brûlée Milk Tea"],
+  seat:"Mostly grab-and-go; kiosk ordering (defaults to Chinese).",
+  park:"Plaza lot — reviewers note it can be challenging.",vibe:["Shanghai import chain","Tip: order via DoorDash to read English menu","Real fruit chunks"]},
+ {n:"Chubby Tea (Rowland Heights)",h:"SGV / Rowland Heights",lat:33.9935618,lng:-117.9013221,r:4.9,rc:631,p:1,ph:"+1 626-400-6115",a:"1388 Fullerton Rd, Rowland Heights",
+  hrs:["12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 9:00 PM"],
+  drinks:["Osmanthus Oolong Milk Tea + boba","Strawberry Oolong Tea","Tea-forward milk teas"],
+  seat:"Counter inside the Chubby Cattle hotpot restaurant — you don't need to dine to order.",
+  park:"Restaurant plaza parking.",vibe:["Inside Chubby Cattle","Great quality, low price","Afternoon break ~4–5 PM"]},
+ {n:"ChaHalo (Rowland Heights)",h:"SGV / Rowland Heights",lat:33.990438,lng:-117.916531,r:4.7,rc:313,p:2,ph:"+1 909-516-8448",a:"17823 Colima Rd, City of Industry",
+  hrs:["11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM"],
+  drinks:["Signature Halo Fruit Tea","Brown Sugar Milk Tea","Rock Oolong Lemon Tea","Strawberry Yakult"],
+  seat:"Spacious, clean and modern with plenty of comfy seating.",
+  park:"Plenty of plaza parking.",vibe:["Tea-forward like Chagee/Molly","Handmade boba","Kiosk order"]},
+ {n:"LELECHA & Wonder Bakery",h:"SGV / Rowland Heights",lat:33.9925129,lng:-117.8911643,r:4.8,rc:254,p:2,ph:"+1 626-764-4000",a:"18888 Labin Ct a105, Rowland Heights",
+  hrs:["12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM"],
+  drinks:["Jasmine Bouquet Tea (signature)","Strawberry Peach Cheese Tea","Famous flaky egg tarts","Tiramisu"],
+  seat:"Tiny pickup-window spot tucked behind the plaza; cashless kiosk.",
+  park:"Plaza lot.",vibe:["NYC import tea + bakery","Legendary egg tarts","BOGO promos"]},
+ {n:"ALittle Tea (Rowland Heights)",h:"SGV / Rowland Heights",lat:33.9889616,lng:-117.9047142,r:4.6,rc:144,p:1,ph:"+1 626-363-4617",a:"18343 Colima Rd, Rowland Heights",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:30 PM","11:00 AM – 10:30 PM","11:00 AM – 10:00 PM"],
+  drinks:["Four Seasons Milk Tea (~$4.99 large!)","Passionfruit Green Tea","Ovaltine + coffee jelly"],
+  seat:"Just waiting seats, no tables — a grab-and-go, not a study spot.",
+  park:"Galleria plaza lot is small and can be hard to park.",vibe:["Very cheap","Most toppings free","Runs sweet — order 50%"]},
+ {n:"R&B Tea (Rowland Heights)",h:"SGV / Rowland Heights",lat:33.9875826,lng:-117.870632,r:4.4,rc:92,p:1,ph:"+1 909-895-7584",a:"19745 Colima Rd #11, Rowland Heights",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM"],
+  drinks:["Jasmine Green Milk Tea","Oolong Milk Tea + cheese foam","Watermelonada","Mixed Berry Stormy"],
+  seat:"Clean, nice hang-out space; staff repeat your order before making it.",
+  park:"Plaza lot (opposite end from the restaurants).",vibe:["Customizable","Bubble waffles","Friendly service"]},
+ {n:"The TEA (Hacienda Heights)",h:"SGV / Hacienda Heights",lat:33.9916122,lng:-117.9334375,r:4.6,rc:51,p:1,ph:"+1 909-696-9883",a:"1673 S Azusa Ave, Hacienda Heights",
+  hrs:["11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM"],
+  drinks:["Orange Yakult","Smashed Lime Aiyu","Osmanthus Milk Tea","No.18 Golden Mellow Milk Tea"],
+  seat:"Friendly hard-working staff; comfortable for a sit.",
+  park:"Azusa Ave plaza parking.",vibe:["Fresh fruit teas","Freshly brewed pure teas","Standout service"]},
+ {n:"Tea Champ (Hacienda Heights)",h:"SGV / Hacienda Heights",lat:33.9921005,lng:-117.9334786,r:4.5,rc:36,p:1,ph:"+1 626-977-9990",a:"1655 S Azusa Ave #F, Hacienda Heights",
+  hrs:["12:00 – 6:00 PM","12:00 – 6:00 PM","12:00 – 6:00 PM","12:00 – 6:00 PM","12:00 – 7:00 PM","12:00 – 7:00 PM","12:00 – 6:00 PM"],
+  drinks:["Roasted Milk Tea (signature)","Brown Sugar Milk + pudding","Honey Green Tea + aloe","Grass Jelly Roasted Oolong"],
+  seat:"Spacious; has a mini Taiwanese snack shop (Champion Food) inside.",
+  park:"Plaza parking.",vibe:["Very fresh tea","32 oz / reasonable price","Plays Jay Chou","Closes early (6 PM)"]},
+ {n:"Sky Boba Cafe",h:"South Bay / Torrance",lat:33.8530769,lng:-118.3523393,r:4.7,rc:226,p:1,ph:"+1 424-514-4888",a:"19800 Hawthorne Blvd ste 216, Torrance",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM"],
+  drinks:["Taro Frappe","Thai Tea (free with 2 drinks)","Strawberry Matcha","Brown Sugar Matcha Latte"],
+  seat:"Cute, clean, minimalist and cozy with comfy chairs — a nice work spot.",
+  park:"Small plaza with lots of parking.",vibe:["Welcoming owner","Crystal boba","Adjustable sweetness"]},
+ {n:"Tea Station (Torrance)",h:"South Bay / Torrance",lat:33.8479817,lng:-118.3632687,r:4.8,rc:55,p:1,ph:"+1 310-214-9163",a:"4620 Del Amo Blvd, Torrance",
+  hrs:["12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 8:00 PM"],
+  drinks:["Chrysanthemum Tea","Osmanthus Oolong Milk Tea","Thai Milk Tea","Passion Fruit (huge sizes)"],
+  seat:"A regulars' afternoon hangout with friendly, quick staff.",
+  park:"Plaza parking.",vibe:["Huge portions (reg = others' large)","Quality tea","Order ≤50% sugar"]},
+ {n:"La Cha",h:"South Bay / Torrance",lat:33.8318133,lng:-118.2985603,r:4.6,rc:368,p:2,ph:"+1 424-558-3303",a:"1249 W Carson St, Torrance",
+  hrs:["10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 10:00 PM"],
+  drinks:["Viral chocolate cracking cups","Blended Oreo Matcha","Iced Banana Milk Coffee","Avocado Smoothie"],
+  seat:"Indoor + outdoor tables plus bar seating and tall stools; can get crowded.",
+  park:"Plenty of free self parking.",vibe:["Matcha standout","Social-media famous","Has food (kimchi rice, popcorn chicken)"]},
+ {n:"Berry and Boba",h:"South Bay / Torrance",lat:33.8488041,lng:-118.352592,r:4.8,rc:104,p:2,ph:"+1 310-800-7571",a:"20140 Hawthorne Blvd Ste D, Torrance",
+  hrs:["10:00 AM – 8:00 PM","10:00 AM – 8:00 PM","10:00 AM – 8:00 PM","10:00 AM – 8:00 PM","10:00 AM – 8:00 PM","10:00 AM – 8:00 PM","10:00 AM – 8:00 PM"],
+  drinks:["Real-fruit boba (white foam top)","Strawberry Coconut Boba","Thai Boba","Açaí bowls"],
+  seat:"Clean, tastefully decorated, with a well-built açaí bar.",
+  park:"Hawthorne Blvd plaza.",vibe:["Brazilian açaí + boba","Unlimited toppings","Delivery available"]},
+ {n:"bobaHi Torrance",h:"South Bay / Torrance",lat:33.8026396,lng:-118.3297411,r:4.1,rc:117,p:1,ph:"+1 424-263-5356",a:"24667 Crenshaw Blvd Ste B, Torrance",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Thai Tea","Banana Milk Tea","Coffee + boba","Big tea & juice menu"],
+  seat:"Limited seating; novelty privacy-glass pickup window.",
+  park:"Next to Home Depot / HomeGoods — easy lot.",vibe:["Lots of vegan options","Birthday promos","Beautifully crafted drinks"]},
+ {n:"It's Boba Time (Torrance)",h:"South Bay / Torrance",lat:33.8231288,lng:-118.3278903,r:4.2,rc:371,p:1,ph:"+1 424-558-3699",a:"2370 Crenshaw Blvd Ste J, Torrance",
+  hrs:["10:30 AM – 10:00 PM","10:30 AM – 10:00 PM","10:30 AM – 10:00 PM","10:30 AM – 10:00 PM","10:30 AM – 10:00 PM","10:30 AM – 10:00 PM","10:30 AM – 10:00 PM"],
+  drinks:["Thai Tea","Taro Milk Tea","Tiger Milk Tea","Açaí bowls & macarons"],
+  seat:"Small — more of a grab-and-go than a sit-and-chill.",
+  park:"Crenshaw plaza lot.",vibe:["Big variety","Smoothies + shaved ice","Stamp card"]},
+ {n:"Bunny Cha",h:"South Bay / Gardena",lat:33.8735209,lng:-118.3008958,r:4.6,rc:47,p:2,ph:"+1 310-819-8441",a:"1425 Artesia Blvd Ste 19, Gardena",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Strawberry Green Tea","Matcha Cloud Strawberry Milk","Hokkaido Pudding Milk Tea","Rose Lychee Green Tea"],
+  seat:"Spacious, bright, modern hang-out with comfy chairs and boba artwork (Ume-tea vibe).",
+  park:"Plenty of parking-lot spaces.",vibe:["Sonny Angel & toys","Has food (tofu, popcorn chicken)","Kind service"]},
+ {n:"DOL Cafe, Boba & More",h:"South Bay / Gardena",lat:33.8870975,lng:-118.3141775,r:4.9,rc:123,p:2,ph:"",a:"2021 W Redondo Beach Blvd Unit A, Gardena",
+  hrs:["7:30 AM – 9:00 PM","7:30 AM – 9:00 PM","7:30 AM – 9:00 PM","7:30 AM – 9:00 PM","7:30 AM – 10:00 PM","7:30 AM – 10:00 PM","7:30 AM – 9:00 PM"],
+  drinks:["Sea Salt Vietnamese Coffee","Egg Coffee","Banana Coffee","Roasted Oolong Milk Tea + mousse"],
+  seat:"Clean, vibrant, relaxing — a popular study spot (chairs are firm); staff walk every order out.",
+  park:"Plaza parking.",vibe:["Vietnamese coffee + tea","0–100% sweet levels","Cashless (no cash)"]},
+ {n:"Sunright Tea Studio (Gardena)",h:"South Bay / Gardena",lat:33.8741302,lng:-118.3074043,r:4.3,rc:150,p:1,ph:"+1 424-292-3623",a:"1717 Artesia Blvd, Gardena",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Oreo Brûlée Boba Milk","Blueberry Crunch Frostie","Classic Sunright series"],
+  seat:"No tables/seating inside — strictly to-go.",
+  park:"Plenty of free parking (same plaza as In-N-Out).",vibe:["Self-order kiosk","Quick","Best at 50% sugar"]},
+ {n:"Boba Beast",h:"South Bay / Gardena",lat:33.8934616,lng:-118.3086267,r:4.1,rc:505,p:1,ph:"+1 310-327-5192",a:"15204 S Western Ave, Gardena",
+  hrs:["10:00 AM – 11:00 PM","10:00 AM – 11:00 PM","10:00 AM – 11:00 PM","10:00 AM – 11:00 PM","10:00 AM – 12:00 AM","10:00 AM – 12:00 AM","10:00 AM – 12:00 AM"],
+  drinks:["Mocha Frappe + coffee jelly","Taro Smoothie + rainbow jelly","Golden Milk Tea","Lavender Milk Tea"],
+  seat:"Small clean shop with limited indoor + a few outdoor seats — short visits.",
+  park:"Shopping-center lot.",vibe:["Owner's own recipes","Open till midnight wknds","Big menu + popcorn chicken"]},
+ {n:"Gong Cha (Little Tokyo)",h:"Downtown LA / Little Tokyo",lat:34.0487831,lng:-118.2412603,r:4.3,rc:268,p:1,ph:"+1 213-395-0615",a:"318 E 2nd St #A, LA",
+  hrs:["12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 8:00 PM","12:00 – 10:00 PM","12:00 – 10:00 PM","12:00 – 8:00 PM"],
+  drinks:["Brown Sugar series","Biscoff drink","Triple Jelly","Seasonal snowman cups"],
+  seat:"Modern screen-ordering; small footprint.",
+  park:"Little Tokyo — paid lots/structures.",vibe:["Global chain","Customize on a screen","Runs very sweet — order low"]},
+ {n:"7 Leaves Cafe (Alhambra)",h:"SGV / Alhambra",lat:34.0966482,lng:-118.1281774,r:4.5,rc:844,p:1,ph:"+1 626-782-7775",a:"151 N Garfield Ave, Alhambra",
+  hrs:["7:00 AM – 11:00 PM","7:00 AM – 11:00 PM","7:00 AM – 11:00 PM","7:00 AM – 11:00 PM","7:00 AM – 11:00 PM","8:00 AM – 11:00 PM","8:00 AM – 11:00 PM"],
+  drinks:["House Special Iced Coffee","Mung Bean Milk Tea","Herbal Tea (pandan/chrysanthemum)","Rio Rosa"],
+  seat:"Immaculate; rewards program. Has a drive-thru (line can reach the street).",
+  park:"Drive-thru + lot off Main St.",vibe:["Vietnamese-style coffee+tea chain","Signature mung bean","Drive-thru"]},
+ {n:"7 Leaves Cafe (Torrance)",h:"South Bay / Torrance",lat:33.8621875,lng:-118.3098266,r:4.6,rc:383,p:1,ph:"+1 424-329-0538",a:"18547 S Western Ave, Torrance",
+  hrs:["6:30 AM – 10:00 PM","6:30 AM – 10:00 PM","6:30 AM – 10:00 PM","6:30 AM – 10:00 PM","6:30 AM – 11:00 PM","8:00 AM – 11:00 PM","8:00 AM – 10:00 PM"],
+  drinks:["Cà Phê Sữa Đá","House Special Coffee + boba","Thai Iced Tea + boba","Hot Taro Milk Tea"],
+  seat:"Two large community tables — good for quiet work, less so for chatting.",
+  park:"Free plaza lot.",vibe:["Small focused menu","Macarons","Opens early (6:30 AM)"]},
+ {n:"7 Leaves Cafe (Montebello)",h:"SGV / Montebello",lat:34.0210231,lng:-118.1231701,r:4.4,rc:128,p:1,ph:"+1 323-490-7319",a:"2200 W Beverly Blvd Ste 100, Montebello",
+  hrs:["7:00 AM – 10:00 PM","7:00 AM – 10:00 PM","7:00 AM – 10:00 PM","7:00 AM – 10:00 PM","7:00 AM – 11:00 PM","8:00 AM – 11:00 PM","8:00 AM – 10:00 PM"],
+  drinks:["Strawberry Sunset","Tea-Rex (mung bean + matcha)","Thai Tea","Taro Milk Tea"],
+  seat:"Nice design with limited but comfy seating (low lounge chairs).",
+  park:"Plenty, even during holidays.",vibe:["App rewards","Friendly crew","Macarons + waffles"]},
+ {n:"7 Leaves Cafe (Lynwood)",h:"South LA / Lynwood",lat:33.9309886,lng:-118.1829165,r:4.0,rc:144,p:1,ph:"+1 424-260-5236",a:"5101 E Imperial Hwy, Lynwood",
+  hrs:["7:00 AM – 8:00 PM","7:00 AM – 8:00 PM","7:00 AM – 8:00 PM","7:00 AM – 8:00 PM","7:00 AM – 9:00 PM","8:00 AM – 9:00 PM","8:00 AM – 8:00 PM"],
+  drinks:["Strawberry Hibiscus + honey boba","Strawberry Sunset","House Special Coffee"],
+  seat:"Standard chain layout; entrances sit close to the drive-thru lane.",
+  park:"Drive-thru + lot.",vibe:["Drive-thru","Can be understaffed at peak","Pup cups"]},
+ {n:"Sharetea (Westwood)",h:"West LA / Westwood",lat:34.0614825,lng:-118.4464805,r:4.4,rc:195,p:1,ph:"+1 310-388-8334",a:"1055 Broxton Ave, LA (Westwood Village)",
+  hrs:["11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM","11:00 AM – 12:00 AM"],
+  drinks:["Thai Peel Milk Tea","Matcha Smoothie","Taro Milk Tea + crystal boba","Blueberry Cheesecake (fan fave)"],
+  seat:"Small; house-made pudding & herb jelly. (Restroom often out of order.)",
+  park:"Westwood Village street + structures.",vibe:["Global chain","Dairy-free Taiwan substitute","Open till midnight"]},
+ {n:"heytea (Glendale)",h:"Valley / Glendale",lat:34.1433666,lng:-118.258539,r:4.9,rc:154,p:3,ph:"+1 818-660-1737",a:"1190 Galleria Way, Glendale (Galleria, by Target)",
+  hrs:["11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 7:00 PM"],
+  drinks:["Mango Grapefruit Boom","Cheese-foam 'cloud' Grape Tea","Coconut Matcha Bobo (Lisa collab)","Fruit teas"],
+  seat:"Inside the Glendale Galleria next to Target; mall seating nearby.",
+  park:"Glendale Galleria parking structure.",vibe:["Viral Chinese chain","Fruit-tea forward","~$9 a drink"]},
+ {n:"Boba Moba",h:"Valley / Glendale",lat:34.1470808,lng:-118.2537039,r:4.4,rc:56,p:2,ph:"+1 747-444-0950",a:"116 N Artsakh Ave #105, Glendale",
+  hrs:["12:00 – 10:30 PM","12:00 – 10:30 PM","12:00 – 10:30 PM","12:00 – 10:30 PM","12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 10:30 PM"],
+  drinks:["Rose Matcha Latte + boba","Dubai Chocolate Strawberry Cup","Lotus / Ashta croffle","Biscoff crepe"],
+  seat:"Modern, welcoming spot with plenty of outdoor seating downtown.",
+  park:"Downtown Glendale (Artsakh Ave) street + structures.",vibe:["Viral croffles & crepes","Organic milk","Middle-Eastern flavors"]},
+ {n:"It's Boba Time (Glendale Marketplace)",h:"Valley / Glendale",lat:34.1453724,lng:-118.2540709,r:4.2,rc:322,p:1,ph:"+1 818-945-5755",a:"136 S Brand Blvd, Glendale",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Boba Taro Slush + ice cream","Pistachio Boba + egg custard","Green Apple Slush","Macarons"],
+  seat:"Clean chain space; kiosk ordering.",
+  park:"Structure across the street — 90 min free parking.",vibe:["Big chain menu","Slushes + macarons","Reliable"]},
+ {n:"5.2 Patio Cafe & Boba",h:"Valley / Glendale",lat:34.2300773,lng:-118.2490884,r:5.0,rc:15,p:1,ph:"+1 747-255-7597",a:"3231 Foothill Blvd #204, Glendale (La Crescenta)",
+  hrs:["11:30 AM – 8:30 PM","11:30 AM – 8:30 PM","11:30 AM – 8:30 PM","11:30 AM – 8:30 PM","11:30 AM – 8:30 PM","11:30 AM – 8:30 PM","11:30 AM – 8:00 PM"],
+  drinks:["Taro Iced Tea","Biscoff Milk Tea","Thai Tea + cheese foam","Tiger Brown Sugar"],
+  seat:"A nice study/hang-out with a claw machine and great atmosphere.",
+  park:"Foothill Blvd plaza.",vibe:["Standout service (Helen/Natalia)","Crispy chicken","Family favorite"]},
+ {n:"Boba Tea House (Northridge)",h:"Valley / Northridge",lat:34.2351006,lng:-118.5277032,r:4.8,rc:251,p:1,ph:"+1 818-717-0797",a:"18110 Nordhoff St Unit f, Northridge",
+  hrs:["Closed","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 6:00 PM"],
+  drinks:["Taro Milk Tea","Taiwanese snacks","Crispy chicken"],
+  seat:"Cozy hidden gem where the owners (Deborah & husband) know regulars' orders.",
+  park:"Nordhoff St plaza.",vibe:["In business 20+ years","Owner-run","Closed Mondays"]},
+ {n:"It's Boba Time (Northridge)",h:"Valley / Northridge",lat:34.2423301,lng:-118.5611262,r:4.5,rc:322,p:1,ph:"+1 818-818-5151",a:"19600 Plummer St #600, Northridge",
+  hrs:["10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 10:00 PM","10:00 AM – 11:00 PM","10:00 AM – 11:00 PM","10:00 AM – 10:00 PM"],
+  drinks:["Horchata Smoothie","Thai Tea Smoothie","The Duet (½ milk tea ½ coffee)","Yuzu Slush + crepe cakes"],
+  seat:"Clean and quiet; no pets inside.",
+  park:"Plaza lot, plenty of parking.",vibe:["Valley favorite","Consistent quality","Big dessert menu"]},
+ {n:"Ding Tea (Northridge)",h:"Valley / Northridge",lat:34.2342339,lng:-118.5351789,r:4.3,rc:52,p:1,ph:"+1 818-477-2346",a:"9000 Reseda Blvd #102, Northridge",
+  hrs:["12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 11:00 PM","12:00 – 11:00 PM"],
+  drinks:["Signature Milk Tea + golden boba","Peach Green Tea","Hot teas"],
+  seat:"Plenty of indoor seating — a study spot near CSUN.",
+  park:"Reseda Blvd plaza.",vibe:["Global chain","Customizable sweetness/ice","Open till 11 PM"]},
+ {n:"Boba Snow House",h:"Valley / Northridge",lat:34.2571006,lng:-118.5032837,r:4.6,rc:358,p:1,ph:"+1 818-271-2188",a:"17030 Devonshire St, Northridge",
+  hrs:["12:00 PM – 12:00 AM","12:00 PM – 12:00 AM","12:00 PM – 12:00 AM","12:00 PM – 12:00 AM","12:00 PM – 12:00 AM","12:00 PM – 12:00 AM","12:00 PM – 12:00 AM"],
+  drinks:["Super Thai Tea (signature)","Oreo / Horchata Smoothies","Dragonfruit Lemonade + popping boba"],
+  seat:"Couches with a sense of privacy — one of the valley's best hang-outs.",
+  park:"Devonshire St plaza.",vibe:["Open till midnight daily","Fair prices","Rewards system"]},
+ {n:"OMOMO Tea Shoppe (Irvine)",h:"OC / Irvine",lat:33.7065491,lng:-117.788069,r:4.3,rc:572,p:2,ph:"+1 949-418-9470",a:"14433 Culver Dr, Irvine",
+  hrs:["12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM","12:00 – 9:00 PM"],
+  drinks:["OMOMO Matcha","Strawberry Green Tea","Orange Green Tea","Strawberry Tornado / Yakult"],
+  seat:"Simple, elegant interior; expect long lines at busy hours.",
+  park:"Culver Dr plaza.",vibe:["Irvine institution","Aesthetic drinks","Strong fruit teas"]},
+ {n:"One Zo Boba (Irvine)",h:"OC / Irvine",lat:33.6976019,lng:-117.7408383,r:4.4,rc:590,p:1,ph:"+1 949-418-9672",a:"6376 Irvine Blvd, Irvine",
+  hrs:["11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM","11:00 AM – 9:30 PM"],
+  drinks:["Brown Sugar Milk + handmade pearls","Lychee + One Zo boba","Milk teas"],
+  seat:"Lots of outdoor seating — good for big groups; easy parking.",
+  park:"Plaza lot, easy.",vibe:["Handmade pearls daily","Owner Brian","Separate drink/dessert kiosks"]},
+ {n:"TeaByDo (Irvine)",h:"OC / Irvine",lat:33.6696803,lng:-117.8528926,r:4.9,rc:198,p:2,ph:"+1 949-738-3531",a:"2626 Dupont Dr Ste 040, Irvine",
+  hrs:["11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM","11:00 AM – 1:00 AM"],
+  drinks:["Mango Pomelo Sago","Milk Tea + taro balls","Grape Kyoho","Fresh fruit teas"],
+  seat:"Cute, fast and very organized.",
+  park:"Dupont Dr plaza.",vibe:["Huge global chain","Open till 1 AM","LA-exclusive panda magnet"]},
+ {n:"Jam Jam Tea Lab (Irvine)",h:"OC / Irvine",lat:33.6925548,lng:-117.8271702,r:4.7,rc:166,p:1,ph:"+1 949-418-9575",a:"92 Corporate Park Ste d, Irvine",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Rose Cream Coconut Jasmine","Coconut Mango Pomelo","Osmanthus Milk Tea","Mango Matcha Latte"],
+  seat:"Photogenic cream-green interior with a 'JAM FOR A GOOD TIME' wall — relaxing to read/hang.",
+  park:"Corporate Park lot.",vibe:["Not too sweet","Half-sweet option","Reasonable prices"]},
+ {n:"Desouro (Irvine)",h:"OC / Irvine",lat:33.7051378,lng:-117.784963,r:4.4,rc:80,p:2,ph:"",a:"14370 Culver Dr Ste D, Irvine",
+  hrs:["11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM"],
+  drinks:["Phoenix Oolong No.2 / No.13 Milk Tea","Metal Goddess","Individually tea-bag-brewed teas"],
+  seat:"Beautiful aesthetic interior; can be packed on weekend evenings.",
+  park:"Culver Dr plaza.",vibe:["From the ex-Orobae team","Tea-forward (skip the boba)","Flavor-note menu"]},
+ {n:"TP TEA (Irvine)",h:"OC / Irvine",lat:33.6890512,lng:-117.7716188,r:4.6,rc:12,p:2,ph:"",a:"14775 Jeffrey Rd Ste b, Irvine (Arbor Village)",
+  hrs:["11:30 AM – 9:00 PM","11:30 AM – 9:00 PM","11:30 AM – 9:00 PM","11:30 AM – 9:00 PM","11:30 AM – 9:00 PM","11:30 AM – 9:00 PM","11:30 AM – 9:00 PM"],
+  drinks:["TGY Family Milk Tea","TieGuanYin Milk Tea","Lychee Aloe Fruit Tea"],
+  seat:"Arbor Village Center storefront; efficient service.",
+  park:"Plaza lot.",vibe:["Premium fragrant tea bases","Silky boba","Global chain"]},
+ {n:"Tastea (Irvine)",h:"OC / Irvine",lat:33.684857,lng:-117.8105505,r:4.3,rc:208,p:1,ph:"+1 949-396-6283",a:"3972 Barranca Pkwy Ste K, Irvine",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Kryptonite Matcha Green Tea Smoothie","Ooh La La Smoothie","Honey boba","Stevia option"],
+  seat:"Room to sit — a rare late-evening option in Irvine.",
+  park:"Barranca Pkwy plaza.",vibe:["SoCal chain","Customizable","Has food (calamari)"]},
+ {n:"Tastea (Garden Grove)",h:"OC / Garden Grove",lat:33.7603212,lng:-117.9512255,r:4.4,rc:705,p:1,ph:"+1 714-539-1832",a:"10189 Westminster Ave, Garden Grove",
+  hrs:["10:00 AM – 11:00 PM","10:00 AM – 11:00 PM","10:00 AM – 11:00 PM","10:00 AM – 11:00 PM","10:00 AM – 12:00 AM","10:00 AM – 12:00 AM","10:00 AM – 11:00 PM"],
+  drinks:["Peach (secret-menu classic)","Strawberry Milk Tea","Bootea Shaker","Avocado Avalanche + Karate Chicken"],
+  seat:"Order and wait at the window — a long-running SoCal hangout.",
+  park:"Plaza lot.",vibe:["The ORIGINAL Tastea","32 oz / open late","Famous green boba"]},
+ {n:"Tastea (Costa Mesa)",h:"OC / Costa Mesa",lat:33.6784083,lng:-117.906985,r:4.2,rc:186,p:1,ph:"+1 714-634-2622",a:"1175 Baker St E21, Costa Mesa",
+  hrs:["11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 11:00 PM","11:00 AM – 11:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Passion Attraction","Bootea Shaker","Cantaloupe Crush","Avocado Avalanche"],
+  seat:"Good casual vibe; pickup-to-go friendly.",
+  park:"Baker St plaza.",vibe:["Consistent chain","Fresh-fruit Specialteas","Snacks"]},
+ {n:"Ume Tea",h:"West LA / Mar Vista",lat:34.0191376,lng:-118.4215887,r:4.7,rc:367,p:1,ph:"+1 310-439-1172",a:"11138 Palms Blvd, LA (Mar Vista)",
+  hrs:["11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM","11:30 AM – 10:00 PM"],
+  drinks:["Crème Brûlée w/ salted cream","Taro Fresh Milk + milk pudding","Vegan options"],
+  seat:"Freshly renovated but to-go only — no seating.",
+  park:"Easy street/lot parking in the area.",vibe:["Taiwanese","Surprise cups + tofu snacks","Kiosk order"]},
+ {n:"Boba Guys (Rideback Ranch)",h:"Echo Park",lat:34.0642704,lng:-118.2654046,r:4.4,rc:355,p:1,ph:"",a:"1670 Beverly Blvd, LA (HiFi / Echo Park edge)",
+  hrs:["11:00 AM – 6:00 PM","11:00 AM – 6:00 PM","11:00 AM – 6:00 PM","11:00 AM – 6:00 PM","11:00 AM – 6:00 PM","11:00 AM – 6:00 PM","11:00 AM – 6:00 PM"],
+  drinks:["Strawberry Matcha Latte (iconic)","Ube Latte + boba","Hojicha Latte","Classic Milk Tea + ube brownie"],
+  seat:"Comfortable but compact, counter-service.",
+  park:"Beverly Blvd street parking.",vibe:["SF-origin chain","Tea-centric, organic","Order via app"]},
+ {n:"Boba Guys (Culver City)",h:"Culver City",lat:34.0272097,lng:-118.3873187,r:4.0,rc:242,p:1,ph:"",a:"8820 Washington Blvd #107, Culver City (The Platform)",
+  hrs:["11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 7:00 PM"],
+  drinks:["Strawberry Matcha Latte","Hojicha Latte","Customizable Milk Tea"],
+  seat:"Tiny with no indoor seating, but lots of plaza seats at The Platform.",
+  park:"The Platform Culver City parking.",vibe:["SF-origin chain","Loyalty app","Inside The Platform"]},
+ {n:"Yin Yang Tea",h:"Pasadena",lat:34.1673321,lng:-118.133177,r:4.9,rc:200,p:1,ph:"+1 626-314-2538",a:"1263 N Lake Ave, Pasadena",
+  hrs:["11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM","11:00 AM – 8:00 PM"],
+  drinks:["Piña Colada + lychee jelly","Coconut Coffee + boba","Seasonal refreshers"],
+  seat:"Lovely, welcoming neighborhood spot with a friendly, hands-on owner.",
+  park:"N Lake Ave street + plaza parking.",vibe:["Top-rated","Owner-led service","Rewards points"]},
+ {n:"ALittle Tea (Pasadena)",h:"Pasadena",lat:34.1462359,lng:-118.1159259,r:4.8,rc:107,p:1,ph:"+1 626-660-6820",a:"1671 E Colorado Blvd, Pasadena",
+  hrs:["10:00 AM – 9:00 PM","10:00 AM – 9:00 PM","10:00 AM – 9:00 PM","10:00 AM – 9:00 PM","10:00 AM – 9:00 PM","10:00 AM – 8:00 PM","10:00 AM – 8:00 PM"],
+  drinks:["Mint Milk Tea","Classic Milk Tea + chewy boba","Fruit teas"],
+  seat:"Clean, cute interior with tables for groups — popular with PCC students across the street; expect lines.",
+  park:"Busy corner by PCC — street parking, arrive early.",vibe:["Cheap + high quality","Student favorite","Soft chewy boba"]},
+ {n:"Jam Jam Tea & Moments (Pasadena)",h:"Pasadena",lat:34.1455669,lng:-118.1508825,r:4.8,rc:82,p:2,ph:"+1 626-714-0099",a:"16 W Colorado Blvd, Pasadena (Old Town)",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM"],
+  drinks:["Coconut Mango Pomelo","Ube Cheese Foam Slush","Tsubaki Oolong Milk Tea","Brown Sugar Crème Brûlée"],
+  seat:"Clean, bright and photogenic on Old Town's main strip; seating limited at the newer location.",
+  park:"Nearby parking structure ~$1 for the first 2 hours — a steal for Old Town.",vibe:["Old Town location","Cheap structure parking","Aesthetic"]},
+ {n:"Boba ChaCha — Cafe Pasadena",h:"Pasadena",lat:34.1462975,lng:-118.1487499,r:4.4,rc:186,p:1,ph:"+1 326-236-1535",a:"26 N Raymond Ave, Pasadena",
+  hrs:["11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 9:00 PM","11:00 AM – 10:00 PM","11:00 AM – 10:00 PM","11:00 AM – 9:00 PM"],
+  drinks:["Taro Milk Tea","Strawberry Banana Smoothie","Hojicha + crystal boba"],
+  seat:"Nicely decorated with jazz playing — comfy work spot, but note: no restroom.",
+  park:"Old Town Raymond Ave — structures & street nearby.",vibe:["Jazz café vibe","Pricey (~$9)","Generous toppings"]},
+ {n:"Wushiland Boba (Pasadena)",h:"Pasadena",lat:34.1456403,lng:-118.144112,r:4.5,rc:21,p:2,ph:"+1 626-314-2880",a:"300 E Colorado Blvd Ste 124, Pasadena (Paseo)",
+  hrs:["11:30 AM – 8:00 PM","11:30 AM – 8:00 PM","11:30 AM – 8:00 PM","11:30 AM – 8:00 PM","11:30 AM – 9:00 PM","11:30 AM – 9:00 PM","11:30 AM – 8:00 PM"],
+  drinks:["Oolong Tea Latte + boba","Brown Sugar series","Classic Milk Tea"],
+  seat:"Interior is a bit crammed, but it's inside the Paseo with the whole mall to sit around.",
+  park:"Paseo mall parking structure.",vibe:["Most tapioca per cup","Inside the Paseo","Reasonable prices"]},
+];
+
+/* ---------- helpers ---------- */
+const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const platformColor=r=> r>=4.7?'var(--matcha)': r>=4.4?'var(--taro)': r>=4.1?'var(--peach)':'var(--strawberry)';
+const priceStr=p=> '$'.repeat(p||1);
+
+function parseTime(t){ // "11:00 AM" -> minutes; tolerates a missing meridiem (noon opens)
+  t=t.replace(/[\u2009\u202f\u00a0]/g,' ').trim();
+  const m=t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i); if(!m) return null;
+  let h=+m[1]; const min=+m[2]; const mer=m[3]?m[3].toUpperCase():null;
+  if(mer==='AM'){ if(h===12) h=0; }
+  else if(mer==='PM'){ if(h!==12) h+=12; }
+  else { if(h!==12) h+=12; } // bare time = afternoon (these are noon/PM opens)
+  return h*60+min;
+}
+function isOpenNow(shop){
+  const now=new Date(); const day=now.getDay(); const cur=now.getHours()*60+now.getMinutes();
+  // hrs array is Mon..Sun (index0=Mon). JS getDay 0=Sun..6=Sat
+  const idx = day===0?6:day-1;
+  const str=shop.hrs[idx]; if(!str||/closed/i.test(str)) return false;
+  const parts=str.split(/[–-]/); if(parts.length<2) return false;
+  let o=parseTime(parts[0]), c=parseTime(parts[1]); if(o==null||c==null) return false;
+  if(c<=o) c+=1440; // past midnight
+  let t=cur; if(t<o && c>1440) t+=1440;
+  return t>=o && t<c;
+}
+function todayHours(shop){
+  const day=new Date().getDay(); const idx=day===0?6:day-1; return shop.hrs[idx];
+}
+const enc=encodeURIComponent;
+function links(s){
+  const q=enc(s.n+' '+s.a);
+  return {
+    google:`https://www.google.com/maps/search/?api=1&query=${q}`,
+    yelp:`https://www.yelp.com/search?find_desc=${enc(s.n)}&find_loc=${enc(s.a)}`,
+    uber:`https://www.ubereats.com/search?q=${enc(s.n)}`,
+    fantuan:`https://www.google.com/search?q=${enc(s.n+' Fantuan delivery')}`
+  };
+}
+
+/* ---------- state ---------- */
+let state={q:"",hood:"All",open:false,min:0,sort:"rating"};
+let markers={}; let map;
+
+/* ---------- map ---------- */
+function initMap(){
+  map=L.map('map',{scrollWheelZoom:true}).setView([34.07,-118.30],11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19
+  }).addTo(map);
+  SHOPS.forEach((s,i)=>{
+    const ic=L.divIcon({className:'',html:`<div style="width:30px;height:38px;position:relative;">
+      <div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+        background:${platformColor(s.r)};box-shadow:0 3px 8px rgba(44,30,20,.35);border:2px solid #fff"></div>
+      <div style="position:absolute;top:6px;left:0;width:30px;text-align:center;font:700 11px 'Baloo 2';color:#fff">${s.r}</div>
+      </div>`,iconSize:[30,38],iconAnchor:[15,36]});
+    const m=L.marker([s.lat,s.lng],{icon:ic}).addTo(map);
+    const l=links(s);
+    m.bindPopup(`<div class="pop-title">${s.n}</div>
+      <div class="pop-meta">${s.h} · ⭐ ${s.r} (${s.rc}) · ${priceStr(s.p)}</div>
+      <div class="pop-meta">🅿️ ${s.park.split('.')[0]}.</div>
+      <div class="pop-btn" onclick="openCard(${i})">View details ↓</div>`);
+    m.on('click',()=>focusCard(i));
+    markers[i]=m;
+  });
+  const bounds=L.latLngBounds(SHOPS.map(s=>[s.lat,s.lng]));
+  map.fitBounds(bounds,{padding:[30,30]});
+}
+function focusCard(i){
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+  const c=document.querySelector(`.card[data-i="${i}"]`);
+  if(c){c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+window.openCard=function(i){
+  const c=document.querySelector(`.card[data-i="${i}"]`);
+  if(c){c.classList.add('expanded','active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+};
+
+/* ---------- render ---------- */
+function render(){
+  let rows=SHOPS.map((s,i)=>({s,i}));
+  if(state.hood!=="All") rows=rows.filter(r=>r.s.h===state.hood);
+  if(state.open) rows=rows.filter(r=>isOpenNow(r.s));
+  if(state.min) rows=rows.filter(r=>r.s.r>=state.min);
+  if(state.q){const q=state.q.toLowerCase();
+    rows=rows.filter(r=> (r.s.n+' '+r.s.h+' '+r.s.drinks.join(' ')+' '+r.s.vibe.join(' ')).toLowerCase().includes(q));}
+  if(state.sort==="rating") rows.sort((a,b)=>b.s.r-a.s.r||b.s.rc-a.s.rc);
+  if(state.sort==="reviews") rows.sort((a,b)=>b.s.rc-a.s.rc);
+  if(state.sort==="name") rows.sort((a,b)=>a.s.n.localeCompare(b.s.n));
+
+  const list=document.getElementById('list'); list.innerHTML='';
+  document.getElementById('countRow').textContent=`Showing ${rows.length} of ${SHOPS.length} shops`;
+
+  // dim non-matching markers
+  const shown=new Set(rows.map(r=>r.i));
+  Object.entries(markers).forEach(([i,m])=>m.setOpacity(shown.has(+i)?1:.25));
+
+  rows.forEach(({s,i})=>{
+    const op=isOpenNow(s); const l=links(s);
+    const el=document.createElement('div'); el.className='card'; el.dataset.i=i;
+    el.innerHTML=`
+      <div class="card-head">
+        <div class="pearl" style="background:${platformColor(s.r)}">${s.r}<small>${s.rc}</small></div>
+        <div class="ch-main">
+          <h3>${s.n}</h3>
+          <div class="meta">
+            <span class="hood">${s.h}</span>
+            <span class="price">${priceStr(s.p)}</span>
+            <span class="status ${op?'open':'closed'}">${op?'Open now':'Closed'}</span>
+            <span>${todayHours(s)==='Closed'?'Closed today':todayHours(s)}</span>
+          </div>
+        </div>
+        <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="body">
+        <div class="sec"><div class="sec-label"><span class="dot" style="background:var(--brown-sugar)"></span>Menu highlights</div>
+          <div class="tags">${s.drinks.map(d=>`<span class="tag">${d}</span>`).join('')}</div>
+          <div class="from">Crowd favorites pulled from Google reviews — tap a platform below for the full live menu &amp; prices.</div></div>
+        <div class="sec"><div class="sec-label"><span class="dot" style="background:var(--taro)"></span>Seating &amp; vibe</div>
+          <p>${s.seat}</p>
+          <div class="tags" style="margin-top:8px">${s.vibe.map(v=>`<span class="tag">${v}</span>`).join('')}</div></div>
+        <div class="sec"><div class="park-sec"><div class="sec-label"><span class="dot" style="background:var(--peach)"></span>🅿️ Parking &amp; safety</div>
+          <p>${s.park}</p>
+          <div class="from">Parking notes summarized from reviews. General safety tip: these are public commercial blocks — park in lit areas, keep valuables out of sight, and favor validated lots/structures where offered.</div></div></div>
+        <div class="sec"><div class="sec-label"><span class="dot" style="background:var(--matcha)"></span>Go / order</div>
+          <div class="links">
+            <a class="lnk" href="${l.google}" target="_blank" rel="noopener">📍 <b>Google</b> map &amp; hours</a>
+            <a class="lnk" href="${l.yelp}" target="_blank" rel="noopener">⭐ <b>Yelp</b> menu &amp; photos</a>
+            <a class="lnk" href="${l.uber}" target="_blank" rel="noopener">🛵 <b>UberEats</b> delivery</a>
+            <a class="lnk" href="${l.fantuan}" target="_blank" rel="noopener">🥡 <b>Fantuan</b> delivery</a>
+            ${s.ph?`<a class="lnk" href="tel:${s.ph.replace(/[^+\d]/g,'')}">📞 ${s.ph}</a>`:''}
+          </div>
+          <div class="platform-note">Buttons open each platform's live search for this shop. Availability on UberEats / Fantuan varies by address &amp; time of day — confirm in-app at checkout.</div></div>
+      </div>`;
+    el.querySelector('.card-head').addEventListener('click',()=>{
+      el.classList.toggle('expanded');
+      document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+      el.classList.add('active');
+      map.flyTo([s.lat,s.lng],14,{duration:.7});
+      markers[i].openPopup();
+    });
+    list.appendChild(el);
+  });
+}
+
+/* ---------- chrome ---------- */
+function buildStats(){
+  const avg=(SHOPS.reduce((a,s)=>a+s.r,0)/SHOPS.length).toFixed(2);
+  const hoods=new Set(SHOPS.map(s=>s.h.split(' / ')[0])).size;
+  const total=SHOPS.reduce((a,s)=>a+s.rc,0);
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><b>${SHOPS.length}</b><span>boba shops</span></div>
+    <div class="stat"><b>${avg}★</b><span>avg Google rating</span></div>
+    <div class="stat"><b>${hoods}</b><span>neighborhoods</span></div>
+    <div class="stat"><b>${(total/1000).toFixed(1)}k</b><span>reviews summarized</span></div>`;
+}
+function buildHoods(){
+  const order=["All","SGV / Arcadia","SGV / San Gabriel","SGV / Monterey Park","SGV / Alhambra","SGV / Montebello","SGV / Rowland Heights","SGV / Hacienda Heights","West LA / Sawtelle","West LA / Westwood","West LA / Century City","West LA / Mar Vista","Culver City","Sherman Oaks","Valley / Glendale","Valley / Northridge","South Bay / Torrance","South Bay / Gardena","South LA / Lynwood","Downtown LA","Downtown LA / Chinatown edge","Downtown LA / Little Tokyo","Echo Park","Koreatown","Pasadena","OC / Irvine","OC / Garden Grove","OC / Costa Mesa"];
+  const present=new Set(SHOPS.map(s=>s.h));
+  const hoods=["All",...order.filter(h=>h!=="All"&&present.has(h))];
+  const box=document.getElementById('hoods');
+  hoods.forEach(h=>{
+    const c=document.createElement('div');c.className='chip'+(h==="All"?' on':'');
+    c.textContent=h==="All"?'All LA':h.replace('Downtown LA / ','DTLA · ').replace('South Bay / ','S.Bay · ').replace('South LA / ','').replace('Valley / ','').replace('OC / ','OC · ').replace('West LA / ','').replace('SGV / ','SGV · ');
+    c.onclick=()=>{state.hood=h;document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');render();};
+    box.appendChild(c);
+  });
+}
+document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value;render();});
+document.getElementById('openNow').addEventListener('click',e=>{state.open=!state.open;e.target.classList.toggle('on',state.open);render();});
+document.getElementById('minRating').addEventListener('change',e=>{state.min=+e.target.value;render();});
+document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;render();});
+
+initMap();buildStats();buildHoods();render();
+</script>
+</body>
+</html>
